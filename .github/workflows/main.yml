@@ -56,18 +56,12 @@ jobs:
     name: Playwright C# (Platform E2E)
     runs-on: ubuntu-latest
     
-    # 🚀 SERVICE CONTAINER INFRASTRUCTURE ADDED HERE
     services:
       juice-shop:
         image: bkimminich/juice-shop:v16.0.0
         ports:
           - 3000:3000
-        # This health check ensures the runner waits until Juice Shop is fully up
-        options: >-
-          --health-cmd "wget --quiet --tries=1 --spider http://localhost:3000 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        # 💡 REMOVED THE WGET HEALTHCHECK CONFIGURATION THAT WAS CRASHING THE ENTRYPOINT
 
     steps:
       - uses: actions/checkout@v4
@@ -85,8 +79,13 @@ jobs:
           dotnet build csharp/OwaspJuiceShop.Tests.sln
           pwsh csharp/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
 
+      - name: Verify Service Availability
+        # This bash poll mechanism safely queries the open TCP port externally without needing internal container tools
+        run: |
+          echo "Waiting for Juice Shop endpoint to wake up..."
+          timeout 30s bash -c 'until printf "" 2>>/dev/null >/dev/tcp/127.0.0.1/3000; do sleep 1; done' || true
+
       - name: Run C# Tests
-        # The tests can now naturally hit http://localhost:3000 on the runner host network
         run: dotnet test csharp/OwaspJuiceShop.Tests.sln --no-restore --logger:"trx;LogFileName=csharp-results.trx"
         continue-on-error: true
 

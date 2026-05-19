@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   # --- PYTHON AUTOMATION JOB ---
@@ -34,7 +35,6 @@ jobs:
         run: playwright install --with-deps chromium
 
       - name: Run Python Tests
-        # Added a fallback execution check so it won't crash if Miguel's folder is empty
         run: |
           mkdir -p allure-results
           if [ -d "python/tests" ]; then
@@ -49,12 +49,26 @@ jobs:
         with:
           name: python-results
           path: allure-results
-          if-no-files-found: ignore # Prevents warnings/failures if empty
+          if-no-files-found: ignore
 
   # --- C# AUTOMATION JOB ---
   csharp-tests:
     name: Playwright C# (Platform E2E)
     runs-on: ubuntu-latest
+    
+    # 🚀 SERVICE CONTAINER INFRASTRUCTURE ADDED HERE
+    services:
+      juice-shop:
+        image: bkimminich/juice-shop:v16.0.0
+        ports:
+          - 3000:3000
+        # This health check ensures the runner waits until Juice Shop is fully up
+        options: >-
+          --health-cmd "wget --quiet --tries=1 --spider http://localhost:3000 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -72,7 +86,7 @@ jobs:
           pwsh csharp/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run C# Tests
-        # FIXED: Removed the arguments that cause parsing errors under .NET 10 in Linux runners
+        # The tests can now naturally hit http://localhost:3000 on the runner host network
         run: dotnet test csharp/OwaspJuiceShop.Tests.sln --no-restore --logger:"trx;LogFileName=csharp-results.trx"
         continue-on-error: true
 

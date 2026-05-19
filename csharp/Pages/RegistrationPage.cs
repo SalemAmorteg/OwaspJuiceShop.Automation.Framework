@@ -11,7 +11,7 @@ namespace JuiceShopAutomation.Pages
         private ILocator RepeatPasswordInput => _page.GetByLabel("Field to confirm the password");
 
         // The security question involves clicking the dropdown then selecting an option
-        private ILocator SecurityQuestionDropdown => _page.GetByRole(AriaRole.Combobox, new() { Name = "Security Question"});
+        private ILocator SecurityQuestionDropdown => _page.GetByText("Security Question", new );
         private ILocator SecurityAnswerInput => _page.GetByLabel("Field for the answer to the security question");
 
         private ILocator RegisterButton => _page.GetByRole(AriaRole.Button, new() { Name = "Register" });

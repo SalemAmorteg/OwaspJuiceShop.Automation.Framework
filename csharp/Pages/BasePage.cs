@@ -1,5 +1,7 @@
 using Microsoft.Playwright;
 using System.Threading.Tasks;
+using System;
+using System.IO;
 
 namespace JuiceShopAutomation.Pages
 {
@@ -7,8 +9,6 @@ namespace JuiceShopAutomation.Pages
     // It exists only to be inherited by specific pages like LoginPage or RegisterPage.
     public abstract class BasePage
     {
-
-        public static string BaseUrl => "http://localhost:3000/#";
 
 
         // Protected access allows derived classes (children) to use the Playwright Page instance.
@@ -21,7 +21,7 @@ namespace JuiceShopAutomation.Pages
         private ILocator SearchIcon => _page.GetByLabel("Show/hide search bar");
 
         // The constructor initializes the page instance passed from the Test layer.
-        protected BasePage(IPage page)
+        public BasePage(IPage page)
         {
             _page = page;
         }

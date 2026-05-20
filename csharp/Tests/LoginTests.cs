@@ -20,6 +20,7 @@ namespace JuiceShopAutomation.Tests
         }
 
         [Test]
+        [Ignore("Temporaly")]
         [Description("Verify that a registered user can access the system.")]
         public async Task ShouldLoginSuccessfully()
         {

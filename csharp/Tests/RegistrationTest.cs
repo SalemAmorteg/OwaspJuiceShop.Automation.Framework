@@ -1,8 +1,11 @@
 using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
 using NUnit.Framework;
 using JuiceShopAutomation.Pages;
+using System.Text.RegularExpressions;
 using System;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 namespace JuiceShopAutomation.Tests
 {
@@ -21,24 +24,25 @@ namespace JuiceShopAutomation.Tests
         [Category("Regression")]
         public async Task ShouldRegisterNewUserSuccessfully()
         {
-            // 1. Arrange
-            // We use a timestamp to ensure the email is always unique
-            string uniqueEmail = $"C#user_{DateTime.Now.Ticks}@test.com";
-            string password = "Password123!";
-            
-            await _registrationPage.NavigateToAsync("register");
+            // 1. Arrange: Generate unique test data to ensure CI stability
+            string uniqueEmail = $"qa_user_{Guid.NewGuid().ToString("N").Substring(0, 8)}@owasp-juice.shop";
+            string validPassword = "ComplexPassword123!";
+            string securityAnswer = "AutomatedAnswer";
 
-            // 2. Act
-            await _registrationPage.RegisterUserAsync(uniqueEmail, password, "My First Pet");
+            // 2. Act: Execute the business flow via POM
+            await _registrationPage.NavigateToRegistrationAsync();
+            await _registrationPage.RegisterUserAsync(uniqueEmail, validPassword, securityAnswer);
+            Console.WriteLine(uniqueEmail);
+            Console.WriteLine(validPassword);
+            Console.WriteLine(securityAnswer);
+            // 3. Assert: Validate application state and user expectations using web-first assertions
             
-            Console.WriteLine(uniqueEmail, password);
-            // 3. Assert
-            // After successful registration, Juice Shop redirects back to Login
-            await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex(".*login"));
+            // Verify the success toast appears
+            await Expect(_registrationPage.SuccessToastMessage).ToBeVisibleAsync();
             
-            // Senior Tip: Check for the success snackbar/toast message
-            var successMessage = Page.GetByText("Registration completed successfully.");
-            await Expect(successMessage).ToBeVisibleAsync();
+            // Verify Juice Shop redirects the user to the login page upon successful registration
+            await Expect(Page).ToHaveURLAsync(new Regex(".*login"));
         }
     }
 }
+

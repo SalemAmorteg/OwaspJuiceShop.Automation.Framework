@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using System;
 using System.IO;
@@ -13,12 +14,21 @@ namespace JuiceShopAutomation.Pages
 
         // Protected access allows derived classes (children) to use the Playwright Page instance.
         protected readonly IPage _page;
+        private static readonly string _baseUrl;
 
-        // Shared locators for global elements found on every page.
-        // We follow our Engineering Standard: Prioritize get_by_role and get_by_label.
-        private ILocator NavAccountButton => _page.GetByRole(AriaRole.Button, new() { Name = "Account" });
-        private ILocator NavLoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Login" });
-        private ILocator SearchIcon => _page.GetByLabel("Show/hide search bar");
+        static BasePage()
+        {
+            // 1. Build a unified configuration matrix provider
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory()) // Point to execution output directory
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true) // Load local JSON settings
+                .AddEnvironmentVariables() // Overlays environment updates (e.g. from GitHub Actions)
+                .Build();
+
+            // 2. Extract configuration value safely using standard colon syntax
+            // If both sources are missing, it defaults to localhost as a last resort
+            _baseUrl = configuration["AutomationSettings:BaseUrl"] ?? "http://localhost:3000";
+        }
 
         // The constructor initializes the page instance passed from the Test layer.
         public BasePage(IPage page)
@@ -26,11 +36,21 @@ namespace JuiceShopAutomation.Pages
             _page = page;
         }
 
+        // Shared locators for global elements found on every page.
+        // We follow our Engineering Standard: Prioritize get_by_role and get_by_label.
+        private ILocator NavAccountButton => _page.GetByRole(AriaRole.Button, new() { Name = "Account" });
+        private ILocator NavLoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Login" });
+        private ILocator SearchIcon => _page.GetByLabel("Show/hide search bar");
+
         // Common Action: Navigation to a specific URL.
         // This abstracts the Playwright GoToAsync method for cleaner test code.
         public async Task NavigateToAsync(string path = "")
         {
-            await _page.GotoAsync($"http://localhost:3000/#{path}");
+            // Clean handling of trailing slashes and hash prefixes
+            string targetRoute = string.IsNullOrEmpty(path) ? "/#/" : $"/#/{path}";
+            
+            // Combines into: http://localhost:3000/#/register
+            await _page.GotoAsync($"{_baseUrl.TrimEnd('/')}{targetRoute}");
         }
 
         // Common Action: Navigating to the Login Screen via the global Nav Bar.

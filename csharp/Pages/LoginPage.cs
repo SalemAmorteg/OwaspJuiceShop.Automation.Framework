@@ -10,18 +10,34 @@ namespace JuiceShopAutomation.Pages
         // We use Playwright's 'GetBy' methods which are more resilient than XPaths.
         private ILocator EmailInput => _page.GetByLabel("Text field for the login email");
         private ILocator PasswordInput => _page.GetByLabel("Text field for the login password");
-        private ILocator LoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Log in" });
+        private ILocator LoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Login", Exact = true });
         private ILocator ErrorMessage => _page.Locator(".error"); // Example for dynamic error messages
         private ILocator RegistrationLink => _page.GetByRole(AriaRole.Link, new() { Name = "Not yet a customer?" });
+        private ILocator DismissBannerButton => _page.GetByRole(AriaRole.Button, new() { Name = "Dismiss" });
+        public ILocator ShoppingCartButton { get; }
 
         // 2. Constructor
         // We pass the IPage from the test layer up to the BasePage.
-        public LoginPage(IPage page) : base(page) { }
+        public LoginPage(IPage page) : base(page)
+        {
+            
+            ShoppingCartButton = _page.GetByRole(AriaRole.Button, new() { Name = "Show the shopping cart" });
+        }
 
         // 3. Actions (Methods)
         
         // Method to perform the full login flow.
         // This is a "Composite Action" that simplifies our Test scripts.
+
+        public async Task NavigateToLoginAsync()
+        {
+            await NavigateToAsync("login");
+
+             if (await DismissBannerButton.IsVisibleAsync())
+            {
+                await DismissBannerButton.ClickAsync();
+            }
+        }
         public async Task LoginAsync(string email, string password)
         {
             // Enter the email
@@ -31,6 +47,7 @@ namespace JuiceShopAutomation.Pages
             await PasswordInput.FillAsync(password);
             
             // Click the Login button
+            await LoginButton.WaitForAsync(new() { State = WaitForSelectorState.Visible });
             await LoginButton.ClickAsync();
         }
 

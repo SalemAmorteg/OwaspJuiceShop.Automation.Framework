@@ -19,6 +19,7 @@
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+    <PackageReference Include="Allure.NUnit" Version="2.12.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,9 +27,17 @@
   </ItemGroup>
 
   <ItemGroup>
+  <None Update="allureConfig.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
+
+  <ItemGroup>
   <None Update="appsettings.json">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </None>
 </ItemGroup>
+
+
 
 </Project>

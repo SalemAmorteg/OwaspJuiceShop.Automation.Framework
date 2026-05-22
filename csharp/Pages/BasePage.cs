@@ -41,6 +41,7 @@ namespace JuiceShopAutomation.Pages
         private ILocator NavAccountButton => _page.GetByRole(AriaRole.Button, new() { Name = "Account" });
         private ILocator NavLoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Login" });
         private ILocator SearchIcon => _page.GetByLabel("Show/hide search bar");
+        private ILocator DismissBannerButton => _page.GetByRole(AriaRole.Button, new() { Name = "Close Welcome Banner" });
 
         // Common Action: Navigation to a specific URL.
         // This abstracts the Playwright GoToAsync method for cleaner test code.

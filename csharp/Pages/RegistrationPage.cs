@@ -23,6 +23,7 @@ namespace JuiceShopAutomation.Pages
 
         // Public locator specifically exposed for the Test layer to assert against
         public ILocator SuccessToastMessage => _page.Locator("simple-snack-bar").Filter(new() { HasText = "Registration completed successfully" });
+        public ILocator ShoppingCart => _page.GetByRole(AriaRole.Button, new() { Name = "Show the shopping cart" });
 
         public RegistrationPage(IPage page) : base(page) { }
 

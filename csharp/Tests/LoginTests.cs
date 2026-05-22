@@ -1,38 +1,59 @@
-using Microsoft.Playwright;
 using NUnit.Framework;
+using Allure.NUnit;
+using Allure.Net.Commons;
+using Allure.NUnit.Attributes;
 using JuiceShopAutomation.Pages;
-using System.Threading.Tasks;
+using System;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace JuiceShopAutomation.Tests
 {
     [TestFixture]
+    [AllureNUnit]
+    [AllureSuite("Authentication")]
+    [AllureFeature("Login Capability")]
     public class LoginTests : BaseTest
     {
         private LoginPage _loginPage;
+        private RegistrationPage _registrationPage;
+
+        private string _suiteUserEmail;
+        private string _suiteUserPassword;
 
         [SetUp]
-        public void TestSetup()
+        public async Task TestSetupAsync()
         {
-            // Initialize the LoginPage by passing the 'Page' object 
-            // that BaseTest (via PageTest) provides automatically.
+            // Initialize page models
             _loginPage = new LoginPage(Page);
+            _registrationPage = new RegistrationPage(Page);
+
+            // 1. Generate clean, independent test credentials for this specific test run
+            _suiteUserEmail = $"login_vitals_{Guid.NewGuid().ToString("N").Substring(0, 8)}@owasp-juice.shop";
+            _suiteUserPassword = "SecurePassword789!";
+
+            // 2. Execute programmatic pre-requisite registration via existing POM components
+            await _registrationPage.NavigateToRegistrationAsync();
+            await _registrationPage.RegisterUserAsync(_suiteUserEmail, _suiteUserPassword, "AutomatedAnswer");
         }
 
         [Test]
-        [Ignore("Temporaly")]
-        [Description("Verify that a registered user can access the system.")]
+        [AllureStory("Valid User Login")]
+        [AllureStep("Execute end-to-end login with valid credentials")]
         public async Task ShouldLoginSuccessfully()
         {
             // Arrange
-            await _loginPage.NavigateToAsync("login");
+            await _loginPage.NavigateToLoginAsync();
+            await _loginPage.LoginAsync(_suiteUserEmail, _suiteUserPassword);
 
-            // Act
-            await _loginPage.LoginAsync("admin@juice-sh.op", "admin123");
+            // Assert: Validate application state shifts using web-first assertions[cite: 2]
+            // Juice Shop changes the URL layout back to main storefront root hash upon authentication success
 
-            // Assert
-            // 'Expect' is globally available thanks to PageTest inheritance.
-            await Expect(Page).ToHaveURLAsync(new Regex(".*search"));
+
+           await Expect(Page).ToHaveURLAsync(new Regex(".*search"));
+
+            // Verification of state change (e.g., verifying your basket link or account menu shifts can go here)
+            await Expect(_registrationPage.ShoppingCart).ToBeVisibleAsync();
         }
     }
 }

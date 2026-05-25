@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.append(os.path.join(os.getcwd(), 'python'))
+# Add the parent directory (python/) to sys.path so we can import from utils, pages, etc.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.db_handler import DBHandler
 
 try:

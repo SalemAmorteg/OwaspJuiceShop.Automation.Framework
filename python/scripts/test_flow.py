@@ -1,7 +1,9 @@
 import sys
 import os
-sys.path.append(os.path.join(os.getcwd(), 'python'))
-from playwright.sync_api import sync_playwright
+import re
+from playwright.sync_api import sync_playwright, expect
+# Add the parent directory (python/) to sys.path so we can import from utils, pages, etc.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from pages.login_page import LoginPage
 from pages.register_page import RegisterPage
 
@@ -21,7 +23,8 @@ def test_flow():
         login_page.login("miguel1234@gmail.com", "12345")
         
         try:
-            login_page.verify_url_contains("/search")
+            # Use Playwright's built-in expect for URL verification
+            expect(page).to_have_url(re.compile(r".*/search"))
             print("Login Successful!")
         except Exception as e:
             print(f"Login Failed: {e}")

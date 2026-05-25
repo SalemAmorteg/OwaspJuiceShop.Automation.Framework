@@ -10,7 +10,7 @@ namespace JuiceShopAutomation.Pages
         // We use Playwright's 'GetBy' methods which are more resilient than XPaths.
         private ILocator EmailInput => _page.GetByLabel("Text field for the login email");
         private ILocator PasswordInput => _page.GetByLabel("Text field for the login password");
-        private ILocator LoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Login", Exact = true });
+        private ILocator LoginButton => _page.GetByRole(AriaRole.Button, new() { Name = "Loginnnn", Exact = true });
         private ILocator ErrorMessage => _page.Locator(".error"); // Example for dynamic error messages
         private ILocator RegistrationLink => _page.GetByRole(AriaRole.Link, new() { Name = "Not yet a customer?" });
         private ILocator DismissBannerButton => _page.GetByRole(AriaRole.Button, new() { Name = "Dismiss" });

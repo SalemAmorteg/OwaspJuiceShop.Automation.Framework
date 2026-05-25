@@ -7,6 +7,12 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Grant permissions necessary to automatically compile and deploy Allure report summaries to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   # --- PYTHON AUTOMATION JOB ---
   python-tests:
@@ -36,9 +42,9 @@ jobs:
 
       - name: Run Python Tests
         run: |
-          mkdir -p allure-results
+          mkdir -p unified-allure-results
           if [ -d "python/tests" ]; then
-            pytest python/tests --alluredir=allure-results
+            pytest python/tests --alluredir=unified-allure-results
           else
             echo "No python tests structured yet."
           fi
@@ -48,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-results
-          path: allure-results
+          path: unified-allure-results
           if-no-files-found: ignore
 
   # --- C# AUTOMATION JOB ---
@@ -61,7 +67,6 @@ jobs:
         image: bkimminich/juice-shop:v16.0.0
         ports:
           - 3000:3000
-        # 💡 REMOVED THE WGET HEALTHCHECK CONFIGURATION THAT WAS CRASHING THE ENTRYPOINT
 
     steps:
       - uses: actions/checkout@v4
@@ -80,20 +85,23 @@ jobs:
           pwsh csharp/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Verify Service Availability
-        # This bash poll mechanism safely queries the open TCP port externally without needing internal container tools
         run: |
           echo "Waiting for Juice Shop endpoint to wake up..."
           timeout 30s bash -c 'until printf "" 2>>/dev/null >/dev/tcp/127.0.0.1/3000; do sleep 1; done' || true
 
       - name: Run C# Tests
+        # FIX 1: Explicitly pass the Environment Token mapping directly to your BasePage configuration structure
+        env:
+          AutomationSettings__BaseUrl: "http://127.0.0.1:3000"
         run: dotnet test csharp/OwaspJuiceShop.Tests.sln --no-restore --logger:"trx;LogFileName=csharp-results.trx"
         continue-on-error: true
 
-      - name: Upload C# Artifacts
+      - name: Upload C# Raw Allure Results
+        # FIX 2: Target the actual binary folder location where BaseTest outputs screenshots, traces, and JSON results
         uses: actions/upload-artifact@v4
         with:
           name: csharp-results
-          path: csharp/TestResults
+          path: csharp/bin/Debug/net10.0/allure-results
           if-no-files-found: ignore
 
   # --- REPORTING JOB ---
@@ -103,9 +111,47 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Download all artifacts
+      - name: Checkout gh-pages Branch (Required for history tracking)
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: Create Consolidation Directory
+        run: mkdir -p combined-allure-results
+
+      - name: Download Python Artifacts
         uses: actions/download-artifact@v4
+        with:
+          name: python-results
+          path: combined-allure-results
+        continue-on-error: true
+
+      - name: Download C# Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: csharp-results
+          path: combined-allure-results
         continue-on-error: true
         
-      - name: Consolidate Results
-        run: echo "Ready to aggregate Python and C# results into a unified dashboard."
+      - name: Load Allure History
+        run: |
+          mkdir -p combined-allure-results/history
+          cp -r gh-pages/history/* combined-allure-results/history/ 2>/dev/null || true
+
+      - name: Compile Unified Allure Dashboard
+        # Automatically downloads the Allure engine, merges python-results + csharp-results, and writes history trendlines
+        uses: simple-elf/allure-report-action@master
+        id: allure-report
+        with:
+          allure_results: combined-allure-results
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: Deploy Compiled Report to GitHub Pages
+        uses: peaceiris/actions-deploy-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report

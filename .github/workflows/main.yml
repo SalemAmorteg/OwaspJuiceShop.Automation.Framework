@@ -7,9 +7,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Grant permissions necessary to automatically compile and deploy Allure report summaries to GitHub Pages
+# Ensure these exact three values are set globally at the top level
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -110,14 +110,10 @@ jobs:
     needs: [python-tests, csharp-tests]
     runs-on: ubuntu-latest
     if: always()
-    steps:
-      - name: Checkout gh-pages Branch (Required for history tracking)
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-        continue-on-error: true
+    
+    # Target the official GitHub Pages deployment environment natively
 
+    steps:
       - name: Create Consolidation Directory
         run: mkdir -p combined-allure-results
 
@@ -134,6 +130,14 @@ jobs:
           name: csharp-results
           path: combined-allure-results
         continue-on-error: true
+
+      - name: Checkout gh-pages for History
+        # We still use checkout to grab historical trends if they exist
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
         
       - name: Load Allure History
         run: |
@@ -141,7 +145,6 @@ jobs:
           cp -r gh-pages/history/* combined-allure-results/history/ 2>/dev/null || true
 
       - name: Compile Unified Allure Dashboard
-        # Automatically downloads the Allure engine, merges python-results + csharp-results, and writes history trendlines
         uses: simple-elf/allure-report-action@master
         id: allure-report
         with:
@@ -149,9 +152,19 @@ jobs:
           allure_report: allure-report
           allure_history: allure-history
 
-      - name: Deploy Compiled Report to GitHub Pages
-        uses: peaceiris/actions-deploy-pages@v4
+      # -------------------------------------------------------------
+      # FIX: Official Native GitHub Pages Deployment Pipeline
+      # -------------------------------------------------------------
+      
+      - name: Setup Pages Infrastructure
+        uses: actions/configure-pages@v5
+
+      - name: Upload HTML Directory as Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: allure-report
+          # Tell GitHub to compress our newly generated html report folder
+          path: allure-report
+
+      - name: Deploy Compiled Report Natively to Cloud
+        id: deployment
+        uses: actions/deploy-pages@v4

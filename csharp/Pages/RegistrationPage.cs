@@ -34,18 +34,24 @@ namespace JuiceShopAutomation.Pages
         public async Task NavigateToRegistrationAsync()
         {
             // Note: Base URL should ideally be managed by environment configuration, not hardcoded.
-            await NavigateToAsync("register");
-            
-            // Dismiss banner to prevent click interception on the account menu
-            if (await DismissBannerButton.IsVisibleAsync())
+            await NavigateToAsync("register"); 
+
+            // 1. Defensively handle the Welcome Banner
+            try 
             {
+                await DismissBannerButton.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 2000 });
                 await DismissBannerButton.ClickAsync();
             }
-            if (await CookieBannerButton.IsVisibleAsync())
+            catch (TimeoutException) { /* Banner did not appear, proceed gracefully */ }
+
+            // 2. Defensively handle the Cookie Consent Banner to unblock the lower UI
+            try 
             {
+                await CookieBannerButton.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 2000 });
                 await CookieBannerButton.ClickAsync();
             }
-
+            catch (TimeoutException) { /* Cookie banner already dismissed, proceed gracefully */ }
+            
             await AccountMenuButton.ClickAsync();
             await LoginMenuItem.ClickAsync();
             await NewCustomerLink.ClickAsync();

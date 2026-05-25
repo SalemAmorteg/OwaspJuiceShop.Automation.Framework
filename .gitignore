@@ -1,18 +1,33 @@
-# .NET
+# ==========================================
+# Shared Framework Exclusions
+# ==========================================
+
+# .NET / C# (Salem's Workspace)
 bin/
 obj/
 *.user
 *.suo
 
-# Python
-__pycache__/
-*.pyc
-.venv/
-env/
-
-# OS
+# OS Artifacts
 .DS_Store
 Thumbs.db
 
+# Shared Test Reporting Artifacts
 allure-results/
 allure-report/
+playwright-report/
+test-results/
+
+# ==========================================
+# Python Framework Exclusions (Miguel's Workspace)
+# ==========================================
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.htmlcov/
+htmlcov/
+.geminiignore
+.env

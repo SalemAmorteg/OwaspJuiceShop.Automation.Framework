@@ -1,5 +1,6 @@
 using Microsoft.Playwright;
 using System.Threading.Tasks;
+using System;
 
 namespace JuiceShopAutomation.Pages
 {
@@ -8,6 +9,7 @@ namespace JuiceShopAutomation.Pages
         // 1. Locators
 
         private ILocator DismissBannerButton => _page.GetByRole(AriaRole.Button, new() { Name = "Close Welcome Banner" });
+        private ILocator CookieBannerButton => _page.GetByLabel("dismiss cookie message");
         private ILocator AccountMenuButton => _page.GetByRole(AriaRole.Button, new() { Name = "Show/hide account menu" });
         private ILocator LoginMenuItem => _page.GetByRole(AriaRole.Menuitem, new() { Name = "Go to login page" });
         private ILocator NewCustomerLink => _page.GetByRole(AriaRole.Link, new() { Name = "Not yet a customer?" });
@@ -38,6 +40,10 @@ namespace JuiceShopAutomation.Pages
             if (await DismissBannerButton.IsVisibleAsync())
             {
                 await DismissBannerButton.ClickAsync();
+            }
+            if (await CookieBannerButton.IsVisibleAsync())
+            {
+                await CookieBannerButton.ClickAsync();
             }
 
             await AccountMenuButton.ClickAsync();

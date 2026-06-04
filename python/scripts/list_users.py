@@ -1,12 +1,20 @@
 import sys
 import os
-# Add the parent directory (python/) to sys.path so we can import from utils, pages, etc.
+
+# Resolves workspace environment paths to enable local cross-module diagnostic execution
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.db_handler import DBHandler
 
 try:
     db = DBHandler()
-    users = db._execute_query("SELECT email FROM Users LIMIT 5")
-    print(f"Users in DB: {[u['email'] for u in users]}")
+    users = db.get_all_users()
+    
+    # Truncates execution logging output to prevent console flooding during heavy volume runs
+    print("User Credentials (Email: Password):")
+    for i, user in enumerate(users):
+        if i >= 5:  
+            break
+        print(f"{user['email']}: {user['password']}")
+
 except Exception as e:
     print(f"Error: {e}")

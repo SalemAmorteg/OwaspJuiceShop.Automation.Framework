@@ -1,41 +1,43 @@
 import re
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 class BasePage:
     """
-    Staff-Level BasePage: Provides a shared interface for all pages.
-    Centralizes UI blocker management to prevent race conditions[cite: 2].
+    Orchestrates shared UI states and high-frequency lifecycle interactions 
+    such as banner dismissal, layout overlays, and global routing hooks.
     """
     def __init__(self, page: Page):
         self.page = page
 
-    def navigate(self, path: str = ""):
+    def navigate(self, path: str = "") -> None:
         """
-        Unified navigation method inherited by all Page Objects[cite: 2].
-        Ensures Juice Shop hash-routing and overlay dismissal are handled.
+        Handles SPA routing normalization by formatting paths to support 
+        the application's hash-routing strategy (#/) before triggering navigation.
         """
-        # Ensure the path starts with /#/ for Juice Shop's SPA architecture
         clean_path = path.lstrip("/")
         target_path = f"/#/{clean_path}"
         
-        # Playwright prepends the base_url from pytest.ini automatically[cite: 2]
         self.page.goto(target_path)
         self.dismiss_initial_overlays()
     
-    def dismiss_initial_overlays(self):
+    def dismiss_initial_overlays(self) -> None:
         """
-        Resiliently handles global UI blockers per Engineering Standards.
+        Aggressively intercepts and dismisses persistent global welcome modals 
+        and cookies overlays using short-circuit waiting gates to protect parallel runs.
         """
-        welcome_btn = self.page.get_by_role("button", name="Close Welcome Banner")
-        cookie_btn = self.page.get_by_label("dismiss cookie message")
+        welcome_dialog = self.page.locator("mat-dialog-container")
+        welcome_close_btn = self.page.get_by_role("button", name="Close Welcome Banner")
+        cookie_dismiss_btn = self.page.get_by_label("dismiss cookie message")
         
-        # Non-blocking checks with short timeouts to maintain velocity
         try:
-            if welcome_btn.is_visible(timeout=2500):
-                welcome_btn.click()
+            # Short timeout to detect if the banner is loading or visible
+            if welcome_dialog.is_visible(timeout=1500):
+                welcome_close_btn.wait_for(state="visible", timeout=1500)
+                welcome_close_btn.click()
+                welcome_dialog.wait_for(state="hidden", timeout=2000)
                 
-            if cookie_btn.is_visible(timeout=1000):
-                cookie_btn.click()
+            if cookie_dismiss_btn.is_visible(timeout=500):
+                cookie_dismiss_btn.click()
+                cookie_dismiss_btn.wait_for(state="hidden", timeout=1500)
         except Exception:
-            # Prevent fragile hangs if overlays were cleared by other means[cite: 2]
             pass

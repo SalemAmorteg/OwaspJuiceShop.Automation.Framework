@@ -7,44 +7,53 @@ from config.test_data import UserCredentials, generate_unique_email
 from utils.db_handler import DBHandler
 
 @pytest.fixture(scope="function")
-def registration_user(page: Page, register_page: RegisterPage, db_handler: DBHandler) -> UserCredentials:
+def registration_user(
+    page: Page, 
+    register_page_instance: RegisterPage, 
+    db_handler: DBHandler
+) -> UserCredentials:
     """
-    Custom fixture for registration-specific seeding.
-    Uses the UI to register a user and verifies DB persistence.
+    Handles user onboarding orchestrations directly via front-end flows.
+    Executes core validation tasks against internal security schemas during initialization.
     """
     password = "SecurePassword123!"
     email = generate_unique_email(prefix="reg_test")
     credentials = UserCredentials(email=email, password=password)
     security_answer = "Mariana"
 
-    # 1. Setup: Register via UI
-    register_page.navigate()
-    register_page.register_new_user(credentials.email, credentials.password, security_answer)
+    # Registration sequence trigger
+    register_page_instance.navigate()
+    register_page_instance.register_new_user(
+        credentials.email, 
+        credentials.password, 
+        security_answer
+    )
 
-    # Verify successful redirect
     expect(page).to_have_url(re.compile(r".*/login"))
 
-    # 2. Validate Persistence (The Backend Assertion)
+    # Backend Hashing & Identity Persistence Checks
     user_in_db = db_handler.get_user_by_email(credentials.email)
     assert user_in_db is not None, f"User {credentials.email} was not found in the database after registration."
     assert user_in_db['password'] != credentials.password, "SECURITY RISK: Password not hashed."
     
     yield credentials
 
-    # 3. Teardown: (Best effort)
     pass
 
-def test_new_user_registration_lifecycle(registration_user: UserCredentials, login_page: LoginPage, page: Page):
+
+def test_new_user_registration_lifecycle(
+    registration_user: UserCredentials, 
+    login_page_instance: LoginPage, 
+    page: Page
+) -> None:
     """
-    Integration Test: Verifies the full lifecycle of a new user from registration to login.
+    Integration Sweep: Confirms end-to-end credential usability,
+    ensuring newly established records execute authentications smoothly.
     """
-    # 1. Arrange: User is already registered via the fixture
     email = registration_user.email
     password = registration_user.password
 
-    # 2. Act: Perform a login with the newly registered user
-    login_page.navigate()
-    login_page.login(email, password)
+    login_page_instance.navigate()
+    login_page_instance.login(email, password)
 
-    # 3. Assert: Verify successful login
     expect(page).to_have_url(re.compile(r".*/search"))

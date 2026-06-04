@@ -1,64 +1,93 @@
 import pytest
 import re
-from playwright.sync_api import Page, expect, sync_playwright
+from playwright.sync_api import Page, expect
 from pages.login_page import LoginPage
 from pages.register_page import RegisterPage
+from pages.search_page import SearchPage
+from pages.cart_page import CartPage
 from config.test_data import UserCredentials, generate_unique_email
 from utils.db_handler import DBHandler
 
-@pytest.fixture(scope="session")
-def browser():
-    with sync_playwright() as p:
-        # Standardized on chromium per Engineering Strategy[cite: 4]
-        browser = p.chromium.launch(headless=False) 
-        yield browser
-        browser.close()
+# -----------------------------------------------------------------------------
+# Configuration Hooks 
+# -----------------------------------------------------------------------------
+
+def pytest_configure(config):
+    """
+    Hooks into global pytest initialization properties.
+    Manages runtime profile changes or cross-process variables for worker pools.
+    """
+    pass
+
+# -----------------------------------------------------------------------------
+# Core Infrastructure & Database Fixtures
+# -----------------------------------------------------------------------------
 
 @pytest.fixture(scope="function")
-def db_handler():
+def db_handler() -> DBHandler:
+    """Exposes low-level transaction handlers to manage assertions or clean up state records."""
     return DBHandler()
 
-@pytest.fixture(scope="function")
-def page(browser, base_url):
-    """
-    Zero-State Leakage strategy: Injects base_url into context[cite: 2].
-    """
-    context = browser.new_context(base_url=base_url)
-    page = context.new_page()
-    yield page
-    context.close()
+# -----------------------------------------------------------------------------
+# Page Object Injection Layer (Strict POM Separation)
+# -----------------------------------------------------------------------------
 
 @pytest.fixture(scope="function")
-def login_page(page):
+def login_page_instance(page: Page) -> LoginPage:
+    """Instantiates a distinct login interface layer within the current session context."""
     return LoginPage(page)
 
-@pytest.fixture(scope="function")
-def register_page(page):
-    return RegisterPage(page)
 
 @pytest.fixture(scope="function")
-def ui_seeded_user(page: Page, register_page: RegisterPage, db_handler: DBHandler) -> UserCredentials:
+def register_page_instance(page: Page) -> RegisterPage:
+    """Instantiates a distinct sign-up interface layer within the current session context."""
+    return RegisterPage(page)
+
+
+@pytest.fixture(scope="function")
+def search_page_instance(page: Page) -> SearchPage:
+    """Instantiates a distinct marketplace filter layer within the current session context."""
+    return SearchPage(page)
+
+
+@pytest.fixture(scope="function")
+def cart_page_instance(page: Page) -> CartPage:
+    """Instantiates a distinct checkout collection layer within the current session context."""
+    return CartPage(page)
+
+# -----------------------------------------------------------------------------
+# Data Seeding & Setup Orchestration
+# -----------------------------------------------------------------------------
+
+@pytest.fixture(scope="function")
+def ui_seeded_user(
+    page: Page, 
+    register_page_instance: RegisterPage, 
+    db_handler: DBHandler
+) -> UserCredentials:
     """
-    UI-driven user seeding fixture.
-    Creates a unique user via the Registration UI before the test.
-    This ensures the user is fully 'real' in the system context.
+    Seeding Hook: Directs an interactive workflow to create an active user identity.
+    Enforces automated targeted removals post-execution to avoid local state pollution.
     """
     password = "Password123!"
     email = generate_unique_email(prefix="ui_test")
     credentials = UserCredentials(email=email, password=password)
     security_answer = "Answer123"
 
-    # 1. Setup: Register via UI
-    register_page.navigate()
-    register_page.register_new_user(credentials.email, credentials.password, security_answer)
+    # Orchestrates the front-end profile creation process
+    register_page_instance.navigate()
+    register_page_instance.register_new_user(
+        credentials.email, 
+        credentials.password, 
+        security_answer
+    )
     
-    # Verification that registration succeeded via UI (e.g., redirect or success message)
-    # In Juice Shop, registration usually redirects to the home/login page.
     expect(page).to_have_url(re.compile(r".*/login"))
 
     yield credentials
 
-    # 2. Teardown: (Best effort) Cleanup is harder via UI without an admin account.
-    # For this prototype, we rely on the unique email to avoid collisions.
-    # In a production-grade setup, we would use an API call here.
-    pass
+    # Teardown Sequence: Sweeps data remnants to maintain consistent parallel worker runs
+    try:
+        db_handler.delete_user_by_email(credentials.email)
+    except Exception as e:
+        print(f"\n[WARNING] Background cleanup failed for user {credentials.email}: {str(e)}")

@@ -2,6 +2,10 @@ from playwright.sync_api import Page, expect
 from pages.base_page import BasePage
 
 class RegisterPage(BasePage):
+    """
+    Encapsulates user account signup form registration flows, managing input focus validation, 
+    and Angular select list picker mechanics.
+    """
     def __init__(self, page: Page) -> None:
         super().__init__(page)
         self.email_input = page.get_by_role("textbox", name="Email address field")
@@ -12,18 +16,34 @@ class RegisterPage(BasePage):
         self.register_button = page.get_by_role("button", name="Button to complete the")
 
     def navigate(self) -> None:
-        """Standardized override for the Register route[cite: 1]."""
+        """Directly updates routing history context to point to the registration page path."""
         super().navigate("register")
 
     def register_new_user(self, email: str, password: str, security_answer: str) -> None:
+        """Completes account creation profiles by filling fields and selecting a security recovery fallback."""
+        # Concurrency Protection: Sweep and clear any delayed welcome banners 
+        # before interacting with the initial form element.
+        self.dismiss_initial_overlays()
+        
+        # Enforce defensive verification gates before interactions
+        self.email_input.wait_for(state="visible")
         self.email_input.fill(email)
-        self.email_input.press("Tab") 
+        
         self.password_input.fill(password)
+        
+        # Secondary sweep check before filling password confirmations
+        self.dismiss_initial_overlays()
         self.repeat_password_input.fill(password)
         
+        # Final sweep check right before interacting with the dropdown field
+        self.dismiss_initial_overlays()
+        self.security_question_dropdown.wait_for(state="visible")
         self.security_question_dropdown.click()
-        self.page.get_by_role("option").first.click()
+        
+        self.page.locator("mat-option").first.wait_for(state="visible")
+        self.page.locator("mat-option").first.click()
+        
         self.security_answer_input.fill(security_answer)
         
-        expect(self.register_button).to_be_enabled(timeout=7000)
+        self.register_button.wait_for(state="visible")
         self.register_button.click()

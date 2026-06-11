@@ -1,33 +1,85 @@
 # ==========================================
-# Shared Framework Exclusions
+# Python
 # ==========================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# .NET / C# (Salem's Workspace)
-bin/
-obj/
-*.user
-*.suo
-
-# OS Artifacts
-.DS_Store
-Thumbs.db
-
-# Shared Test Reporting Artifacts
-allure-results/
-allure-report/
-playwright-report/
-test-results/
-
-# ==========================================
-# Python Framework Exclusions (Miguel's Workspace)
-# ==========================================
+# Virtual environments
 .venv/
 venv/
 env/
-__pycache__/
-*.pyc
-.pytest_cache/
-.htmlcov/
-htmlcov/
-.geminiignore
+
+# ==========================================
+# Playwright / Test Artifacts
+# ==========================================
+python/ui_suite/artifacts/screenshots/*
+python/ui_suite/artifacts/videos/*
+python/ui_suite/artifacts/traces/*
+
+# Keep folder structure
+!python/ui_suite/artifacts/screenshots/.gitkeep
+!python/ui_suite/artifacts/videos/.gitkeep
+!python/ui_suite/artifacts/traces/.gitkeep
+
+# ==========================================
+# Allure Reports
+# ==========================================
+allure-results/
+allure-report/
+target/allure-results/
+
+# ==========================================
+# .NET Build Artifacts
+# ==========================================
+bin/
+obj/
+
+# ==========================================
+# Playwright Browsers
+# ==========================================
+.playwright/
+
+# ==========================================
+# IDEs / Editors
+# ==========================================
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ==========================================
+# Operating System Files
+# ==========================================
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# Logs
+# ==========================================
+*.log
+
+# ==========================================
+# Local Environment / Secrets
+# ==========================================
 .env
+.env.*
+!.env.example
+
+# ==========================================
+# Local AI Tooling
+# ==========================================
+.geminiignore
+
+# ==========================================
+# Misc
+# ==========================================
+*.tmp
+*.bak

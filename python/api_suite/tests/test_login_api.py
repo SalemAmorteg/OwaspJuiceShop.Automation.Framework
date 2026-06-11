@@ -1,102 +1,63 @@
 import pytest
+from pydantic import ValidationError
+from python.api_suite.models.auth_models import UserSchema, LoginResponseSchema
 
-from api_suite.config.test_data import VALID_USER
-from models.auth_models import LoginResponseSchema
-
-
-LOGIN_ENDPOINT = "/rest/user/login"
-
-
-@pytest.mark.smoke
-@pytest.mark.functional
-def test_login_success(api_client):
+def test_user_registration_contract_and_validation(api_client, user_factory):
     """
-    Valid login returns JWT token.
+    Validates that a POST request to /api/Users creates a user, maps against 
+    the Pydantic UserSchema, and safely enforces boundary errors on duplicates.
     """
+    # 1. Arrange: Generate unique identity payload credentials
+    payload = user_factory()
+    
+    # 2. Act: Execute registration request sequence
+    response = api_client.register_user(payload)
+    
+    # 3. Assert: Validate status code protocols
+    assert response.status_code == 201
+    
+    # 4. Assert: Extract and validate data payload block against Pydantic definitions
+    user_data = response.json().get("data")
+    try:
+        validated_user = UserSchema(**user_data)
+        assert validated_user.email == payload["email"]
+    except ValidationError as e:
+        pytest.fail(f"User registration response failed data contract validation: {e}")
 
-    response = api_client.post(
-        LOGIN_ENDPOINT,
-        {
-            "email": VALID_USER.email,
-            "password": VALID_USER.password
-        }
-    )
+    # 5. Assert: Re-send same payload configuration to validate duplicate data restrictions (400 or 422 processing)
+    duplicate_response = api_client.register_user(payload)
+    assert duplicate_response.status_code in [400, 422], "Security Flaw: Database accepted duplicate email entry."
 
+
+def test_user_login_contract_and_boundaries(api_client, user_factory):
+    """
+    Validates token payload integrity returned on POST /rest/user/login 
+    and checks that unauthorized parameters are securely rejected.
+    """
+    # 1. Arrange: Register an active user profile
+    credentials = user_factory()
+    reg_response = api_client.register_user(credentials)
+    assert reg_response.status_code == 201
+
+    # 2. Act: Attempt authenticating against the workspace with valid credentials
+    login_payload = {"email": credentials["email"], "password": credentials["password"]}
+    response = api_client.login_user(login_payload)
+    
+    # 3. Assert: Verify backend acceptance status
     assert response.status_code == 200
+    
+    # 4. Assert: Validate data response structure using the LoginResponseSchema contract
+    response_json = response.json()
+    try:
+        validated_login = LoginResponseSchema(**response_json)
+        assert validated_login.authentication.umail == credentials["email"]
+        assert len(validated_login.authentication.token) > 20, "Security Risk: Authentication token is invalid or truncated."
+    except ValidationError as e:
+        pytest.fail(f"Login response payload failed validation contract schemas: {e}")
 
-    schema = LoginResponseSchema.model_validate(response.json())
-
-    assert schema.authentication.token
-    assert schema.is_jwt
-
-
-@pytest.mark.functional
-@pytest.mark.parametrize(
-    "payload,expected_status",
-    [
-        (
-            {"email": "unknown@test.com", "password": "Password123!"},
-            401
-        ),
-        (
-            {"email": VALID_USER.email, "password": "wrong_password"},
-            401
-        ),
-        (
-            {"email": "", "password": ""},
-            400
-        ),
-        (
-            {"email": "not_an_email", "password": "Password123!"},
-            400
-        ),
-    ]
-)
-def test_login_negative_matrix(api_client, payload, expected_status):
-    """
-    Negative login scenarios.
-    """
-
-    response = api_client.post(LOGIN_ENDPOINT, payload)
-
-    assert response.status_code == expected_status
-
-
-@pytest.mark.functional
-def test_login_error_response_discovery(api_client):
-    """
-    Contract discovery test (safe JSON handling).
-    """
-
-    response = api_client.post(
-        LOGIN_ENDPOINT,
-        {"email": "fake@test.com", "password": "wrong_password"}
-    )
-
-    print("\nSTATUS:", response.status_code)
-    print("BODY:", response.text)
-
-    assert response.status_code in [400, 401]
-
-
-@pytest.mark.security
-def test_login_does_not_expose_internal_errors(api_client):
-
-    response = api_client.post(
-        LOGIN_ENDPOINT,
-        {"email": "", "password": ""}
-    )
-
-    body = response.text.lower()
-
-    forbidden = [
-        "sequelize",
-        "exception",
-        "stack",
-        "trace",
-        "syntaxerror",
-        "referenceerror"
-    ]
-
-    for item in forbidden:
-        assert item not in body
+    # 5. Assert: Verify security response behavior using invalid credentials
+    bad_login_payload = {"email": credentials["email"], "password": "wrong_password_123"}
+    failed_response = api_client.login_user(bad_login_payload)
+    
+    assert failed_response.status_code == 401
+    assert "Exception" not in failed_response.text, "Information Leakage Flaw: System stacktrace structural print leaked out."

@@ -1,35 +1,28 @@
 import pytest
-
-from api_suite.clients.api_client import APIClient
-from api_suite.config.test_data import VALID_USER
-
-
-BASE_URL = "http://localhost:3000"
-
+import random
+from typing import Dict, Any, Callable
+from python.api_suite.clients.api_client import APIClient
 
 @pytest.fixture(scope="session")
-def api_client():
+def api_client() -> APIClient:
     """
-    Shared API client for all API tests.
+    Initializes and provides a session-scoped API client instance 
+    bound to the target container endpoint.
     """
-    return APIClient(BASE_URL)
+    return APIClient("http://localhost:3000")
 
-
-@pytest.fixture
-def authenticated_api_client(api_client):
+@pytest.fixture(scope="function")
+def user_factory() -> Callable[..., Dict[str, Any]]:
     """
-    Returns API client already authenticated.
+    A factory utility generating unique user registration payloads dynamically
+    to prevent test data collision between concurrent executions.
     """
-
-    response = api_client.login(
-        VALID_USER.email,
-        VALID_USER.password
-    )
-
-    assert response.status_code == 200
-
-    token = response.json()["authentication"]
-
-    api_client.set_auth_token(token)
-
-    return api_client
+    def _create_payload(email: str = None, password: str = "Pass123!") -> Dict[str, Any]:
+        if email is None:
+            unique_id = random.randint(10000, 99999)
+            email = f"natalia_sdet_{unique_id}@test.com"
+        return {
+            "email": email,
+            "password": password
+        }
+    return _create_payload

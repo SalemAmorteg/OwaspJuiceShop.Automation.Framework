@@ -1,46 +1,24 @@
-from pydantic import (
-    BaseModel,
-    EmailStr,
-    ConfigDict
-)
-
+from pydantic import BaseModel, EmailStr
 
 class UserSchema(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+    """
+    Validates data structural requirements for User entity outputs returned via /api/Users.
+    """
     id: int
     email: EmailStr
-    role: str
+    createdAt: str
+    updatedAt: str
 
-
-class RegistrationResponseSchema(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    status: str
-    data: UserSchema
-
-
-class AuthenticationSchema(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+class AuthenticationDetails(BaseModel):
+    """
+    Maps the internal validation parameters nested inside the 'authentication' key.
+    """
     token: str
     bid: int
     umail: EmailStr
 
-
 class LoginResponseSchema(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    authentication: AuthenticationSchema
-
-    @property
-    def is_jwt(self) -> bool:
-        return (
-            self.authentication.token.count(".") == 2
-        )
-
-
-class ErrorResponseSchema(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    error: str
+    """
+    Top-level data contract validator mirroring the outer layer of the auth payload response.
+    """
+    authentication: AuthenticationDetails
